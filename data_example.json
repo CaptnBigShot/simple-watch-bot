@@ -1,0 +1,67 @@
+{
+  "webdriver_settings": {
+    "webdriver_path": "./geckodriver",
+    "headless": true
+  },
+  "mail_settings": {
+    "mail_server_host": "localhost",
+    "mail_server_port_number": "1025",
+    "mail_server_login_username": "username",
+    "mail_server_login_password": "password",
+    "mail_server_from": "from@email.com",
+    "mail_server_to": "to@email.com",
+    "should_send_emails": true
+  },
+  "watchlist": {
+    "recheck_num_of_seconds": 305,
+    "items": [
+      {
+        "name": "Rogue Fitness 5LB Olympic Plates stock",
+        "url": "https://www.roguefitness.com/rogue-olympic-plates",
+        "element_selector_type": "xpath",
+        "element_selector": "/html/body/div[7]/div[2]/div[5]/form/div[2]/div[1]/div[2]/div/div[1]/div/div[3]/div[2]/div",
+        "alert_condition": {
+          "is_displayed": false,
+          "is_not_displayed": true,
+          "text_equals": null,
+          "text_not_equals": null,
+          "text_contains": null,
+          "text_not_contains": null,
+          "has_condition_been_met": false
+        },
+        "precondition_steps": null
+      },
+      {
+        "name": "York Barbell 5LB Iso-Grip Steel Olympic Plate stock",
+        "url": "https://yorkbarbell.com/product/iso-grip-steel-olympic-plate/",
+        "element_selector_type": "xpath",
+        "element_selector": "/html/body/div[2]/div/main/div/div[2]/div[2]/form/div/div[1]/div[5]",
+        "alert_condition": {
+          "is_displayed": false,
+          "is_not_displayed": false,
+          "text_equals": null,
+          "text_not_equals": null,
+          "text_contains": "In stock",
+          "text_not_contains": "Out of stock",
+          "has_condition_been_met": false
+        },
+        "precondition_steps": [
+          {
+            "action": "click_element",
+            "element_selector_type": "xpath",
+            "element_selector": "/html/body/div[6]/div[2]/div[1]",
+            "details": null
+          },
+          {
+            "action": "select_option_by_text",
+            "element_selector_type": "xpath",
+            "element_selector": "//*[@id=\"pa_weight\"]",
+            "details": {
+              "option_text": "5 lb"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
