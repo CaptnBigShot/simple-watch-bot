@@ -1,4 +1,6 @@
+import concurrent.futures
 import json
+import logging
 import smtplib
 import time
 
@@ -140,42 +142,58 @@ class WebdriverController(object):
 
 class MainController(object):
     def __init__(self):
-        self.n = None
         self.data_controller = DataController()
         self.deserialized_data_file = self.data_controller.read_data_file()
-        self.webdriver_controller = WebdriverController(self.deserialized_data_file.webdriver_settings)
         self.watchlist_controller = WatchlistController(self.deserialized_data_file.watchlist)
         self.mail_controller = MailController(self.deserialized_data_file.mail_settings)
+        self.webdriver_settings = self.deserialized_data_file.webdriver_settings
+        self.max_number_of_workers = self.webdriver_settings.max_number_of_workers
 
     def check_watchlist_item(self, watchlist_item: WatchlistItem):
-        self.webdriver_controller.create_driver()
+        driver_controller = WebdriverController(self.webdriver_settings)
+        driver_controller.create_driver()
         try:
-            print("Checking item:", watchlist_item.name)
-            self.webdriver_controller.go_to_page(watchlist_item.url)
+            logging.info('Started checking item: ' + watchlist_item.name)
+            driver_controller.go_to_page(watchlist_item.url)
             if watchlist_item.precondition_steps is not None:
-                self.webdriver_controller.perform_precondition_steps(watchlist_item)
-            alert_message = self.webdriver_controller.check_watchlist_item_element_conditions(watchlist_item)
-            print("Alert message:", alert_message)
+                driver_controller.perform_precondition_steps(watchlist_item)
+            alert_message = driver_controller.check_watchlist_item_element_conditions(watchlist_item)
+            logging.info('Item ' + watchlist_item.name + ' alert message: ' + (alert_message if alert_message is not None else 'N/A'))
             if alert_message is not None and not watchlist_item.alert_condition.has_condition_been_met:
                 alert = self.watchlist_controller.create_alert(watchlist_item, alert_message)
                 self.mail_controller.send_email(alert.title, alert.message)
             watchlist_item.alert_condition.has_condition_been_met = alert_message is not None
         except Exception as e:
-            print("ERROR: Exception was caught during execution of watchlist check.", e)
+            logging.error(e)
         finally:
-            self.webdriver_controller.close_driver()
+            driver_controller.close_driver()
 
     def check_watchlist_items(self):
-        print(datetime.now(), "checking watchlist items..")
+        logging.info('Started checking watchlist items..')
         for watchlist_item in self.watchlist_controller.watchlist.items:
             self.check_watchlist_item(watchlist_item)
+
+    def check_watchlist_items_concurrently(self):
+        logging.info('Started checking watchlist items')
+        with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_number_of_workers) as executor:
+            future_watchlist_item = {executor.submit(self.check_watchlist_item, item): item
+                                     for item in self.watchlist_controller.watchlist.items}
+            for future in concurrent.futures.as_completed(future_watchlist_item):
+                item = future_watchlist_item[future]
+                try:
+                    future.result()
+                except Exception as exc:
+                    logging.info(('%s generated an exception: %s' % (item.name, exc)))
+                else:
+                    logging.info('Done checking item ' + item.name)
+        data = json.dumps(self.deserialized_data_file, default=lambda o: o.__dict__, sort_keys=False, indent=2)
+        self.data_controller.write_data_file(data)
+        logging.info('Done checking watchlist items')
 
     def check_watchlist_items_with_recheck(self):
         while True:
             start_time = time.time()
-            self.check_watchlist_items()
-            data = json.dumps(self.deserialized_data_file, default=lambda o: o.__dict__, sort_keys=False, indent=2)
-            self.data_controller.write_data_file(data)
+            self.check_watchlist_items_concurrently()
             end_time = time.time()
             elapsed_time = end_time - start_time
             sleep_time = max(self.watchlist_controller.watchlist.recheck_num_of_seconds - elapsed_time, 0)

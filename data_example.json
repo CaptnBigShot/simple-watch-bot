@@ -1,7 +1,8 @@
 {
   "webdriver_settings": {
     "webdriver_path": "./geckodriver",
-    "headless": true
+    "headless": true,
+    "max_number_of_workers": 3
   },
   "mail_settings": {
     "mail_server_host": "localhost",

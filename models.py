@@ -2,9 +2,10 @@ from typing import List
 
 
 class WebdriverSettings(object):
-    def __init__(self, webdriver_path: str, headless: bool):
+    def __init__(self, webdriver_path: str, headless: bool, max_number_of_workers: int):
         self.webdriver_path = webdriver_path
         self.headless = headless
+        self.max_number_of_workers = max_number_of_workers
 
     @classmethod
     def from_json(cls, data):
