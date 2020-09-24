@@ -1,4 +1,5 @@
 from typing import List
+from datetime import datetime
 
 
 class WebdriverSettings(object):
@@ -33,6 +34,10 @@ class WatchlistItemAlert(object):
         self.title = title
         self.message = message
 
+    @classmethod
+    def from_json(cls, data):
+        return cls(**data)
+
 
 class WatchlistItemAlertCondition(object):
     def __init__(self, is_displayed: bool, is_not_displayed: bool, text_equals: str, text_not_equals: str,
@@ -62,15 +67,31 @@ class WatchlistItemPreconditionStep(object):
         return cls(**data)
 
 
+class WatchlistItemCheckHistory(object):
+    def __init__(self, message: str, did_error: bool, check_date: str):
+        self.check_date = str(datetime.now()) if check_date is None else check_date
+        self.message = message
+        self.did_error = did_error
+
+    @classmethod
+    def from_json(cls, data):
+        return cls(**data)
+
+
 class WatchlistItem(object):
     def __init__(self, name: str, url: str, element_selector_type: str, element_selector: str,
-                 alert_condition: WatchlistItemAlertCondition, precondition_steps: List[WatchlistItemPreconditionStep]):
+                 alert_condition: WatchlistItemAlertCondition, precondition_steps: List[WatchlistItemPreconditionStep],
+                 is_active: bool = True, check_history: List[WatchlistItemCheckHistory] = None):
+        if check_history is None:
+            check_history = []
         self.name = name
         self.url = url
         self.element_selector_type = element_selector_type.lower()
         self.element_selector = element_selector
         self.alert_condition = alert_condition
         self.precondition_steps = precondition_steps
+        self.check_history = check_history
+        self.is_active = is_active
 
     @classmethod
     def from_json(cls, data):
@@ -78,6 +99,8 @@ class WatchlistItem(object):
         deserialized.alert_condition = WatchlistItemAlertCondition.from_json(data["alert_condition"])
         if deserialized.precondition_steps is not None:
             deserialized.precondition_steps = list(map(WatchlistItemPreconditionStep.from_json, data["precondition_steps"]))
+        if deserialized.check_history is not None and deserialized.check_history:
+            deserialized.check_history = list(map(WatchlistItemCheckHistory.from_json, data["check_history"]))
         return deserialized
 
 

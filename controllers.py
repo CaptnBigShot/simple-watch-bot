@@ -12,7 +12,7 @@ from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.support.ui import Select
 from models import DataRoot, WatchlistItemPreconditionStep, MailSettings, Watchlist, WatchlistItem, \
-    WatchlistItemAlert, WebdriverSettings
+    WatchlistItemAlert, WatchlistItemCheckHistory, WebdriverSettings
 
 
 class DataController(object):
@@ -67,7 +67,7 @@ class WebdriverController(object):
         driver_options = Options()
         driver_options.headless = self.webdriver_settings.headless
         self.driver = webdriver.Firefox(executable_path=self.webdriver_settings.webdriver_path, options=driver_options)
-        self.driver.implicitly_wait(10)
+        self.driver.implicitly_wait(60)
 
     def close_driver(self):
         self.driver.quit()
@@ -110,7 +110,7 @@ class WebdriverController(object):
             elif watchlist_item.alert_condition.is_displayed:
                 pass
             else:
-                return "Error: expected element to be displayed, but could not be found."
+                raise Exception("Error: expected element to be displayed, but could not be found.")
 
         # is displayed
         if watchlist_item_element is not None \
@@ -158,12 +158,22 @@ class MainController(object):
             if watchlist_item.precondition_steps is not None:
                 driver_controller.perform_precondition_steps(watchlist_item)
             alert_message = driver_controller.check_watchlist_item_element_conditions(watchlist_item)
-            logging.info('Item ' + watchlist_item.name + ' alert message: ' + (alert_message if alert_message is not None else 'N/A'))
+            history = WatchlistItemCheckHistory(alert_message, False, str(datetime.now()))
+            watchlist_item.check_history.append(history)
+            logging.info('Item ' + watchlist_item.name + ' alert message: ' + (
+                alert_message if alert_message is not None else 'N/A'))
             if alert_message is not None and not watchlist_item.alert_condition.has_condition_been_met:
                 alert = self.watchlist_controller.create_alert(watchlist_item, alert_message)
                 self.mail_controller.send_email(alert.title, alert.message)
             watchlist_item.alert_condition.has_condition_been_met = alert_message is not None
         except Exception as e:
+            history = WatchlistItemCheckHistory(str(e), True, str(datetime.now()))
+            watchlist_item.check_history.append(history)
+            if len(watchlist_item.check_history) > 2 \
+                    and all(item.did_error for item in watchlist_item.check_history[-3:]):
+                alert = self.watchlist_controller.create_alert(watchlist_item, str(e))
+                self.mail_controller.send_email(alert.title, alert.message)
+                watchlist_item.is_active = False
             logging.error(e)
         finally:
             driver_controller.close_driver()
@@ -177,7 +187,7 @@ class MainController(object):
         logging.info('Started checking watchlist items')
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_number_of_workers) as executor:
             future_watchlist_item = {executor.submit(self.check_watchlist_item, item): item
-                                     for item in self.watchlist_controller.watchlist.items}
+                                     for item in self.watchlist_controller.watchlist.items if item.is_active}
             for future in concurrent.futures.as_completed(future_watchlist_item):
                 item = future_watchlist_item[future]
                 try:
@@ -197,4 +207,6 @@ class MainController(object):
             end_time = time.time()
             elapsed_time = end_time - start_time
             sleep_time = max(self.watchlist_controller.watchlist.recheck_num_of_seconds - elapsed_time, 0)
-            time.sleep(sleep_time)
+            if sleep_time > 0:
+                logging.info('Re-running in ' + str(round(sleep_time, 2)) + ' seconds')
+                time.sleep(sleep_time)
