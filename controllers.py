@@ -67,7 +67,7 @@ class WebdriverController(object):
         driver_options = Options()
         driver_options.headless = self.webdriver_settings.headless
         self.driver = webdriver.Firefox(executable_path=self.webdriver_settings.webdriver_path, options=driver_options)
-        self.driver.implicitly_wait(60)
+        self.driver.implicitly_wait(15)
 
     def close_driver(self):
         self.driver.quit()
@@ -196,17 +196,22 @@ class MainController(object):
                     logging.info(('%s generated an exception: %s' % (item.name, exc)))
                 else:
                     logging.info('Done checking item ' + item.name)
-        data = json.dumps(self.deserialized_data_file, default=lambda o: o.__dict__, sort_keys=False, indent=2)
-        self.data_controller.write_data_file(data)
+        # data = json.dumps(self.deserialized_data_file, default=lambda o: o.__dict__, sort_keys=False, indent=2)
+        # self.data_controller.write_data_file(data)
         logging.info('Done checking watchlist items')
 
     def check_watchlist_items_with_recheck(self):
-        while True:
-            start_time = time.time()
-            self.check_watchlist_items_concurrently()
-            end_time = time.time()
-            elapsed_time = end_time - start_time
-            sleep_time = max(self.watchlist_controller.watchlist.recheck_num_of_seconds - elapsed_time, 0)
-            if sleep_time > 0:
-                logging.info('Re-running in ' + str(round(sleep_time, 2)) + ' seconds')
-                time.sleep(sleep_time)
+        try:
+            while True:
+                start_time = time.time()
+                self.check_watchlist_items_concurrently()
+                end_time = time.time()
+                elapsed_time = end_time - start_time
+                sleep_time = max(self.watchlist_controller.watchlist.recheck_num_of_seconds - elapsed_time, 0)
+                if sleep_time > 0:
+                    logging.info('Re-running in ' + str(round(sleep_time, 2)) + ' seconds')
+                    time.sleep(sleep_time)
+        finally:
+            pass
+            # data = json.dumps(self.deserialized_data_file, default=lambda o: o.__dict__, sort_keys=False, indent=2)
+            # self.data_controller.write_data_file(data)
