@@ -16,8 +16,8 @@ from models import DataRoot, WatchlistItemPreconditionStep, MailSettings, Watchl
 
 
 class DataController(object):
-    def __init__(self):
-        self.data_json_file_name = './data.json'
+    def __init__(self, data_file_name: str):
+        self.data_json_file_name = data_file_name
 
     def read_data_file(self):
         with open(self.data_json_file_name, 'r') as data_file:
@@ -209,8 +209,8 @@ class WebdriverController(object):
 
 
 class MainController(object):
-    def __init__(self):
-        self.data_controller = DataController()
+    def __init__(self, data_file_name: str):
+        self.data_controller = DataController(data_file_name)
         self.deserialized_data_file = self.data_controller.read_data_file()
         self.mail_controller = MailController(self.deserialized_data_file.mail_settings)
         self.webdriver_settings = self.deserialized_data_file.webdriver_settings

@@ -1,7 +1,7 @@
 {
   "webdriver_settings": {
     "webdriver_path": "./geckodriver",
-    "headless": true,
+    "headless": false,
     "max_number_of_workers": 3
   },
   "mail_settings": {
@@ -14,13 +14,13 @@
     "should_send_emails": true
   },
   "watchlist": {
-    "recheck_num_of_seconds": 305,
+    "recheck_num_of_seconds": 30,
     "items": [
       {
-        "name": "Rogue Fitness 5LB Olympic Plates stock",
-        "url": "https://www.roguefitness.com/rogue-olympic-plates",
+        "name": "Rogue Fitness 5LB Change Plates stock",
+        "url": "https://www.roguefitness.com/rogue-lb-change-plates",
         "element_selector_type": "xpath",
-        "element_selector": "/html/body/div[7]/div[2]/div[5]/form/div[2]/div[1]/div[2]/div/div[1]/div/div[3]/div[2]/div",
+        "element_selector": "/html/body/div[7]/div[2]/div[5]/form/div[2]/div[1]/div[2]/div/div[1]/div/div[5]/div[2]/div",
         "alert_condition": {
           "is_displayed": false,
           "is_not_displayed": true,
@@ -30,7 +30,8 @@
           "text_not_contains": null,
           "has_condition_been_met": false
         },
-        "precondition_steps": null
+        "precondition_steps": null,
+        "is_active": true
       },
       {
         "name": "York Barbell 5LB Iso-Grip Steel Olympic Plate stock",
@@ -48,12 +49,6 @@
         },
         "precondition_steps": [
           {
-            "action": "click_element",
-            "element_selector_type": "xpath",
-            "element_selector": "/html/body/div[6]/div[2]/div[1]",
-            "details": null
-          },
-          {
             "action": "select_option_by_text",
             "element_selector_type": "xpath",
             "element_selector": "//*[@id=\"pa_weight\"]",
@@ -61,7 +56,8 @@
               "option_text": "5 lb"
             }
           }
-        ]
+        ],
+        "is_active": true
       }
     ]
   }
