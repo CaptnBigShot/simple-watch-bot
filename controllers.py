@@ -57,8 +57,9 @@ class WatchlistItemController(object):
 
     def __create_alert(self, alert_message: str):
         title = "SimpleWatchBot: " + self.watchlist_item.name + " " + str(datetime.now())
-        message = "An alert condition has been met for '" + self.watchlist_item.name + "': " + alert_message + "\n"
-        message += "URL: " + self.watchlist_item.url
+        message = "An alert condition has been met for '{}'.".format(self.watchlist_item.name)
+        message += "\n\nMessage: {}".format(alert_message)
+        message += "\n\nURL: {}".format(self.watchlist_item.url)
         return WatchlistItemAlert(title, message)
 
     def __perform_select_option_by_text_step(self, step: WatchlistItemPreconditionStep):
@@ -89,70 +90,84 @@ class WatchlistItemController(object):
 
     def __check_element_condition_is_displayed(self):
         return self.watchlist_item_web_element is not None \
-                and self.watchlist_item.alert_condition.is_displayed
+               and self.watchlist_item.alert_condition.is_displayed
 
     def __check_element_condition_is_not_displayed(self):
         return self.watchlist_item_web_element is None \
-                and self.watchlist_item.alert_condition.is_not_displayed
+               and self.watchlist_item.alert_condition.is_not_displayed
 
     def __check_element_condition_text_equals(self):
         return self.watchlist_item.alert_condition.text_equals is not None \
-                and self.watchlist_item_web_element.text == self.watchlist_item.alert_condition.text_equals
+               and self.watchlist_item_web_element.text == self.watchlist_item.alert_condition.text_equals
 
     def __check_element_condition_text_not_equals(self):
         return self.watchlist_item.alert_condition.text_not_equals is not None \
-                and self.watchlist_item_web_element.text != self.watchlist_item.alert_condition.text_not_equals
+               and self.watchlist_item_web_element.text != self.watchlist_item.alert_condition.text_not_equals
 
     def __check_element_condition_text_contains(self):
         return self.watchlist_item.alert_condition.text_contains is not None \
-                and self.watchlist_item.alert_condition.text_contains in self.watchlist_item_web_element.text
+               and self.watchlist_item.alert_condition.text_contains in self.watchlist_item_web_element.text
 
     def __check_element_condition_text_not_contains(self):
         return self.watchlist_item.alert_condition.text_not_contains is not None \
-                and self.watchlist_item.alert_condition.text_not_contains not in self.watchlist_item_web_element.text
+               and self.watchlist_item.alert_condition.text_not_contains not in self.watchlist_item_web_element.text
+
+    def __format_message_for_text_condition(self, condition_message, condition_text: str):
+        return "{} '{}'. \nActual element text: '{}'.".format(condition_message, condition_text,
+                                                              self.watchlist_item_web_element.text)
 
     def __check_watchlist_item_element_conditions(self):
+        message = None
         self.watchlist_item_web_element = self.__find_watchlist_item_element()
         if self.watchlist_item_web_element is None:
             if self.__check_element_condition_is_not_displayed():
-                return "Element is not displayed."
+                message = "Element is not displayed."
             elif self.watchlist_item.alert_condition.is_displayed:
                 pass
             else:
                 raise Exception("Error: expected element to be displayed, but could not be found.")
         else:
             if self.__check_element_condition_is_displayed():
-                return "Element is displayed."
+                message = "Element is displayed."
             elif self.__check_element_condition_text_equals():
-                return "Text equals " + self.watchlist_item.alert_condition.text_equals
+                message = self.__format_message_for_text_condition(
+                    "Element text equals", self.watchlist_item.alert_condition.text_equals)
             elif self.__check_element_condition_text_not_equals():
-                return "Text doesn't equal " + self.watchlist_item.alert_condition.text_not_equals
+                message = self.__format_message_for_text_condition(
+                    "Element text doesn't equal", self.watchlist_item.alert_condition.text_not_equals)
             elif self.__check_element_condition_text_contains():
-                return "Text contains " + self.watchlist_item.alert_condition.text_contains
+                message = self.__format_message_for_text_condition(
+                    "Element text contains", self.watchlist_item.alert_condition.text_contains)
             elif self.__check_element_condition_text_not_contains():
-                return "Text doesn't contain " + self.watchlist_item.alert_condition.text_not_contains
-        return None
+                message = self.__format_message_for_text_condition(
+                    "Element text doesn't contain", self.watchlist_item.alert_condition.text_not_contains)
+        return message
+
+    def __should_send_alert(self, alert_message: str):
+        return alert_message is not None and not self.watchlist_item.alert_condition.has_condition_been_met
+
+    def __is_watchlist_item_check_consistently_failing(self):
+        return len(self.watchlist_item.check_history) >= 5 \
+                    and all(item.did_error for item in self.watchlist_item.check_history[-5:])
 
     def check_watchlist_item(self):
         alert = None
         try:
-            logging.info('Started checking item: ' + self.watchlist_item.name)
+            logging.info("Started checking item '{}'".format(self.watchlist_item.name))
             self.__go_to_page()
             if self.watchlist_item.precondition_steps is not None:
                 self.__perform_precondition_steps()
             alert_message = self.__check_watchlist_item_element_conditions()
             history = WatchlistItemCheckHistory(alert_message, False, str(datetime.now()))
             self.watchlist_item.check_history.append(history)
-            logging.info('Item ' + self.watchlist_item.name + ' alert message: ' + (
-                alert_message if alert_message is not None else 'N/A'))
-            if alert_message is not None and not self.watchlist_item.alert_condition.has_condition_been_met:
+            logging.info("Item '{}' alert message: {}".format(self.watchlist_item.name, alert_message))
+            if self.__should_send_alert(alert_message):
                 alert = self.__create_alert(alert_message)
             self.watchlist_item.alert_condition.has_condition_been_met = alert is not None
         except Exception as e:
             history = WatchlistItemCheckHistory(str(e), True, str(datetime.now()))
             self.watchlist_item.check_history.append(history)
-            if len(self.watchlist_item.check_history) >= 5 \
-                    and all(item.did_error for item in self.watchlist_item.check_history[-5:]):
+            if self.__is_watchlist_item_check_consistently_failing():
                 alert = self.__create_alert(str(e))
                 self.watchlist_item.is_active = False
             logging.error(e)
@@ -186,10 +201,10 @@ class WatchlistController(object):
                 watchlist_item = future_watchlist_item[future]
                 try:
                     future.result()
-                except Exception as exc:
-                    logging.info(('%s generated an exception: %s' % (watchlist_item.name, exc)))
+                except Exception as e:
+                    logging.info("Item '{}' generated an exception: {}".format(watchlist_item.name, e))
                 else:
-                    logging.info('Done checking item ' + watchlist_item.name)
+                    logging.info("Done checking item '{}'".format(watchlist_item.name))
         logging.info('Done checking watchlist items')
 
 
@@ -227,7 +242,7 @@ class MainController(object):
                 elapsed_time = end_time - start_time
                 sleep_time = max(self.watchlist_controller.watchlist.recheck_num_of_seconds - elapsed_time, 0)
                 if sleep_time > 0:
-                    logging.info('Re-running in ' + str(round(sleep_time, 2)) + ' seconds')
+                    logging.info("Re-running in {} seconds".format(str(round(sleep_time, 2))))
                     time.sleep(sleep_time)
         finally:
             # write updated data to file
