@@ -41,13 +41,14 @@ class WatchlistItemAlert(object):
 
 class WatchlistItemAlertCondition(object):
     def __init__(self, is_displayed: bool, is_not_displayed: bool, text_equals: str, text_not_equals: str,
-                 text_contains: str, text_not_contains: str, has_condition_been_met: bool):
+                 text_contains: str, text_not_contains: str, text_changes: bool, has_condition_been_met: bool):
         self.is_displayed = is_displayed
         self.is_not_displayed = is_not_displayed
         self.text_equals = text_equals
         self.text_not_equals = text_not_equals
         self.text_contains = text_contains
         self.text_not_contains = text_not_contains
+        self.text_changes = text_changes
         self.has_condition_been_met = has_condition_been_met
 
     @classmethod

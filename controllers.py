@@ -112,6 +112,16 @@ class WatchlistItemController(object):
         return self.watchlist_item.alert_condition.text_not_contains is not None \
                and self.watchlist_item.alert_condition.text_not_contains not in self.watchlist_item_web_element.text
 
+    def __check_element_condition_text_changes(self):
+        if self.watchlist_item.alert_condition.text_changes is None \
+                or self.watchlist_item.alert_condition.text_changes is False:
+            return False
+        did_text_change = False
+        if self.watchlist_item.alert_condition.text_not_equals is not None:
+            did_text_change = self.__check_element_condition_text_not_equals()
+        self.watchlist_item.alert_condition.text_not_equals = self.watchlist_item_web_element.text
+        return did_text_change
+
     def __format_message_for_text_condition(self, condition_message, condition_text: str):
         return "{} '{}'. \nActual element text: '{}'.".format(condition_message, condition_text,
                                                               self.watchlist_item_web_element.text)
@@ -129,6 +139,11 @@ class WatchlistItemController(object):
         else:
             if self.__check_element_condition_is_displayed():
                 message = "Element is displayed."
+            elif self.watchlist_item.alert_condition.text_changes:
+                previous_element_text = self.watchlist_item.alert_condition.text_not_equals
+                if self.__check_element_condition_text_changes():
+                    message = self.__format_message_for_text_condition(
+                        "Element text changed from", previous_element_text)
             elif self.__check_element_condition_text_equals():
                 message = self.__format_message_for_text_condition(
                     "Element text equals", self.watchlist_item.alert_condition.text_equals)
