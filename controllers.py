@@ -163,7 +163,7 @@ class WatchlistItemController(object):
             logging.info("Item '{}' alert message: {}".format(self.watchlist_item.name, alert_message))
             if self.__should_send_alert(alert_message):
                 alert = self.__create_alert(alert_message)
-            self.watchlist_item.alert_condition.has_condition_been_met = alert is not None
+            self.watchlist_item.alert_condition.has_condition_been_met = alert_message is not None
         except Exception as e:
             history = WatchlistItemCheckHistory(str(e), True, str(datetime.now()))
             self.watchlist_item.check_history.append(history)
